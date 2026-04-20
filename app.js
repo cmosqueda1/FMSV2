@@ -56,6 +56,7 @@ function bindEvents() {
       const section = chip.dataset.section;
       if (state.orderSections.has(section)) state.orderSections.delete(section);
       else state.orderSections.add(section);
+      rerenderOrderView();
     });
   });
 
@@ -65,6 +66,7 @@ function bindEvents() {
       const section = chip.dataset.section;
       if (state.tripSections.has(section)) state.tripSections.delete(section);
       else state.tripSections.add(section);
+      rerenderTripView();
     });
   });
 
@@ -249,12 +251,7 @@ async function runOrderLoad() {
     state.context.orderNo = orderNo;
     state.latestResults.order = json;
     writeResults(json);
-
-    renderOrderSummary(json.data || {}, orderNo, sections);
-    renderSectionTiles("orderSectionCards", json.data || {});
-    renderOrderTable(json.data || {});
-    document.getElementById("orderSectionsCount").textContent = sections.length;
-    document.getElementById("orderTableLabel").textContent = `${sections.length} section(s) loaded`;
+    rerenderOrderView();
   } catch (err) {
     renderEmpty("orderTableWrap", err.message || "Order load failed");
   }
@@ -282,12 +279,7 @@ async function runTripLoad() {
     state.context.tripNo = tripNo;
     state.latestResults.trip = json;
     writeResults(json);
-
-    renderTripSummary(json.data || {}, tripNo, sections);
-    renderSectionTiles("tripSectionCards", json.data || {});
-    renderTripTable(json.data || {});
-    document.getElementById("tripSectionsCount").textContent = sections.length;
-    document.getElementById("tripTableLabel").textContent = `${sections.length} section(s) loaded`;
+    rerenderTripView();
   } catch (err) {
     renderEmpty("tripTableWrap", err.message || "Trip load failed");
   }
@@ -321,6 +313,53 @@ async function runLinehaulLoad() {
   }
 }
 
+function rerenderOrderView() {
+  const json = state.latestResults.order;
+  const sections = Array.from(state.orderSections);
+  const data = (json && json.data) || {};
+  document.getElementById("orderSectionsCount").textContent = sections.length;
+  document.getElementById("orderTableLabel").textContent = sections.length
+    ? `${sections.length} selected section(s)`
+    : "No sections selected";
+
+  if (!json) {
+    renderEmpty("orderTableWrap", sections.length
+      ? "Click Load Order Data to fetch the selected sections."
+      : "Select at least one section.");
+    return;
+  }
+
+  renderOrderSummary(data, state.context.orderNo || json.orderNo, sections);
+  renderSectionTiles("orderSectionCards", filterDataBySections(data, sections));
+  renderOrderTable(data, sections);
+}
+
+function rerenderTripView() {
+  const json = state.latestResults.trip;
+  const sections = Array.from(state.tripSections);
+  const data = (json && json.data) || {};
+  document.getElementById("tripSectionsCount").textContent = sections.length;
+  document.getElementById("tripTableLabel").textContent = sections.length
+    ? `${sections.length} selected section(s)`
+    : "No sections selected";
+
+  if (!json) {
+    renderEmpty("tripTableWrap", sections.length
+      ? "Click Load Trip Data to fetch the selected sections."
+      : "Select at least one section.");
+    return;
+  }
+
+  renderTripSummary(data, state.context.tripNo || json.tripNo, sections);
+  renderSectionTiles("tripSectionCards", filterDataBySections(data, sections));
+  renderTripTable(data, sections);
+}
+
+function filterDataBySections(data, sections) {
+  const allowed = new Set(sections);
+  return Object.fromEntries(Object.entries(data || {}).filter(([key]) => allowed.has(key)));
+}
+
 function pickStatusText(obj) {
   if (!obj || typeof obj !== "object") return "—";
   return (
@@ -345,22 +384,23 @@ function pickStatusText(obj) {
 }
 
 function renderOrderSummary(data, orderNo, sections) {
-  const summary = [];
   const detail = data.detail || {};
   const headinfo = data.headinfo || {};
   const shipper = data.shipper || {};
   const consignee = data.consignee || {};
 
-  summary.push(["Order No", detail.order_no || headinfo.order_no || orderNo]);
-  summary.push(["PRO No", detail.pro_no || headinfo.pro_no || "—"]);
-  summary.push(["Status", detail.status_text || headinfo.status_text || headinfo.status || "—"]);
-  summary.push(["Assign Status", detail.assign_status_text || headinfo.assign_status_text || "—"]);
-  summary.push(["Origin", detail.org_terminal || shipper.location_name || "—"]);
-  summary.push(["Destination", detail.dst_terminal || consignee.location_name || "—"]);
-  summary.push(["Carrier", detail.carrier_name || detail.carrier || headinfo.carrier_name || headinfo.carrier || "—"]);
-  summary.push(["Pickup Date", detail.pickup_date || headinfo.pickup_date || "—"]);
-  summary.push(["Delivery Date", detail.delivery_date || headinfo.delivery_date || "—"]);
-  summary.push(["Sections", sections.join(", ")]);
+  const summary = [
+    ["Order No", detail.order_no || headinfo.order_no || orderNo],
+    ["PRO No", detail.pro_no || headinfo.pro_no || "—"],
+    ["Status", detail.status_text || headinfo.status_text || headinfo.status || "—"],
+    ["Assign Status", detail.assign_status_text || headinfo.assign_status_text || "—"],
+    ["ORG", detail.org_terminal || shipper.location_name || "—"],
+    ["DST", detail.dst_terminal || consignee.location_name || "—"],
+    ["Carrier", detail.carrier_name || detail.carrier || headinfo.carrier_name || headinfo.carrier || "—"],
+    ["Pickup Date", detail.pickup_date || headinfo.pickup_date || "—"],
+    ["Delivery Date", detail.delivery_date || headinfo.delivery_date || "—"],
+    ["Sections", sections.join(", ") || "—"]
+  ];
 
   renderSummaryRows("orderSummary", summary);
 }
@@ -374,12 +414,12 @@ function renderTripSummary(data, tripNo, sections) {
     ["Trip No", detail.trip_no || tripNo],
     ["Status", pickStatusText(detail)],
     ["Dispatch Date", detail.dispatch_date || detail.trip_date || "—"],
-    ["Origin", detail.org_terminal || detail.origin_terminal || "—"],
-    ["Destination", detail.dst_terminal || detail.destination_terminal || "—"],
+    ["ORG", detail.org_terminal || detail.origin_terminal || "—"],
+    ["DST", detail.dst_terminal || detail.destination_terminal || "—"],
     ["Carrier", detail.carrier_name || detail.carrier || "—"],
     ["Task Count", tasks.length || "—"],
     ["Stop Count", stops.length || "—"],
-    ["Sections", sections.join(", ")]
+    ["Sections", sections.join(", ") || "—"]
   ];
 
   renderSummaryRows("tripSummary", summary);
@@ -392,8 +432,8 @@ function renderLinehaulSummary(rows, linehaulNos) {
     ["Rows Returned", String(rows.length)],
     ["Linehaul No", first.linehaul_no || first.lh_no || "—"],
     ["Status", pickStatusText(first)],
-    ["Origin", first.org_terminal || first.origin || "—"],
-    ["Destination", first.dst_terminal || first.destination || "—"]
+    ["ORG", first.org_terminal || first.origin || "—"],
+    ["DST", first.dst_terminal || first.destination || "—"]
   ];
 
   renderSummaryRows("linehaulSummary", summary);
@@ -415,7 +455,11 @@ function renderSectionTiles(targetId, data) {
   target.innerHTML = "";
 
   Object.entries(data).forEach(([key, value]) => {
-    const count = Array.isArray(value) ? value.length : value && typeof value === "object" ? Object.keys(value).length : (value ? 1 : 0);
+    const count = Array.isArray(value)
+      ? value.length
+      : value && typeof value === "object"
+        ? Object.keys(value).length
+        : (value ? 1 : 0);
     const tile = document.createElement("div");
     tile.className = "tile";
     tile.innerHTML = `<strong>${titleize(key)}</strong><span>${count} loaded</span>`;
@@ -423,131 +467,162 @@ function renderSectionTiles(targetId, data) {
   });
 }
 
-function renderOrderTable(data) {
+function renderOrderTable(data, selectedSections = Array.from(state.orderSections)) {
+  const rows = [];
+  const sections = new Set(selectedSections);
   const detail = data.detail || {};
   const tasks = Array.isArray(data.tasks) ? data.tasks : [];
   const files = Array.isArray(data.files) ? data.files : [];
   const history = Array.isArray(data.history) ? data.history : [];
-  const rows = [];
 
-  if (Object.keys(detail).length) {
+  if (sections.has("detail") && Object.keys(detail).length) {
     rows.push({
       "Section": "Detail",
       "Reference": detail.order_no || "—",
       "Name": detail.pro_no || "—",
-      "City A": detail.org_terminal || "—",
-      "City B": detail.dst_terminal || "—",
+      "ORG": detail.org_terminal || "—",
+      "DST": detail.dst_terminal || "—",
       "Status": toBadge(detail.status_text || detail.status || "Loaded")
     });
   }
 
-  tasks.slice(0, 8).forEach((task) => {
-    rows.push({
-      "Section": "Task",
-      "Reference": task.task_no || "—",
-      "Name": task.task_type_group || task.task_type || "—",
-      "City A": task.order_shipper_address?.city || "—",
-      "City B": task.order_consignee_address?.city || "—",
-      "Status": toBadge(task.status_text || task.task_status_text || task.task_status || task.task_type_group || "Task")
+  if (sections.has("tasks")) {
+    tasks.slice(0, 8).forEach((task) => {
+      rows.push({
+        "Section": "Task",
+        "Reference": task.task_no || "—",
+        "Name": task.task_type_group || task.task_type || "—",
+        "ORG": task.order_shipper_address?.city || "—",
+        "DST": task.order_consignee_address?.city || "—",
+        "Status": toBadge(task.status_text || task.task_status_text || task.task_type_group || "Task")
+      });
     });
-  });
+  }
 
-  files.slice(0, 6).forEach((file, index) => {
-    rows.push({
-      "Section": "File",
-      "Reference": file.file_name || file.fileName || `File ${index + 1}`,
-      "Name": file.file_type || file.type || "Document",
-      "City A": file.upload_by || file.create_by || "—",
-      "City B": file.create_time || file.created_at || "—",
-      "Status": toBadge("File")
+  if (sections.has("files")) {
+    files.slice(0, 6).forEach((file, index) => {
+      rows.push({
+        "Section": "File",
+        "Reference": file.file_name || file.fileName || `File ${index + 1}`,
+        "Name": file.file_type || file.type || "Document",
+        "ORG": file.upload_by || file.create_by || "—",
+        "DST": file.create_time || file.created_at || "—",
+        "Status": toBadge("File")
+      });
     });
-  });
+  }
 
-  history.slice(0, 6).forEach((item, index) => {
-    rows.push({
-      "Section": "History",
-      "Reference": item.status_text || item.status || item.action || `History ${index + 1}`,
-      "Name": item.operator || item.create_by || "—",
-      "City A": item.create_time || item.created_at || "—",
-      "City B": item.remark || item.message || "—",
-      "Status": toBadge(item.status_text || item.status || "History")
+  if (sections.has("history")) {
+    history.slice(0, 6).forEach((item, index) => {
+      rows.push({
+        "Section": "History",
+        "Reference": item.status_text || item.status || item.action || `History ${index + 1}`,
+        "Name": item.operator || item.create_by || "—",
+        "ORG": item.create_time || item.created_at || "—",
+        "DST": item.remark || item.message || "—",
+        "Status": toBadge(item.status_text || item.status || "History")
+      });
     });
-  });
+  }
 
-  renderTable("orderTableWrap", rows, ["Section", "Reference", "Name", "City A", "City B", "Status"]);
+  renderTable("orderTableWrap", rows, ["Section", "Reference", "Name", "ORG", "DST", "Status"], sections);
 }
 
-function renderTripTable(data) {
+function renderTripTable(data, selectedSections = Array.from(state.tripSections)) {
+  const rows = [];
+  const sections = new Set(selectedSections);
   const detail = data.detail || {};
   const tasks = Array.isArray(data.tasks) ? data.tasks : [];
   const stops = Array.isArray(data.stops) ? data.stops : [];
   const history = Array.isArray(data.history) ? data.history : [];
-  const rows = [];
+  const files = Array.isArray(data.files) ? data.files : [];
 
-  if (Object.keys(detail).length) {
+  if (sections.has("detail") && Object.keys(detail).length) {
     rows.push({
       "Section": "Detail",
       "Reference": detail.trip_no || "—",
       "Name": pickStatusText(detail),
-      "City A": detail.org_terminal || detail.origin_terminal || "—",
-      "City B": detail.dst_terminal || detail.destination_terminal || "—",
+      "ORG": detail.org_terminal || detail.origin_terminal || "—",
+      "DST": detail.dst_terminal || detail.destination_terminal || "—",
       "Status": toBadge(pickStatusText(detail))
     });
   }
 
-  stops.slice(0, 10).forEach((stop, index) => {
-    rows.push({
-      "Section": "Stop",
-      "Reference": stop.stop_no || stop.stop_seq || `Stop ${index + 1}`,
-      "Name": stop.stop_type_text || stop.stop_type || stop.type || "Stop",
-      "City A": stop.city || stop.address?.city || "—",
-      "City B": stop.state || stop.address?.state || "—",
-      "Status": toBadge(pickStatusText(stop))
+  if (sections.has("files")) {
+    files.slice(0, 10).forEach((file, index) => {
+      rows.push({
+        "Section": "File",
+        "Reference": file.file_name || file.fileName || `File ${index + 1}`,
+        "Name": file.file_type || file.type || "Document",
+        "ORG": file.upload_by || file.create_by || "—",
+        "DST": file.create_time || file.created_at || "—",
+        "Status": toBadge("File")
+      });
     });
-  });
+  }
 
-  tasks.slice(0, 10).forEach((task) => {
-    rows.push({
-      "Section": "Task",
-      "Reference": task.task_no || "—",
-      "Name": task.task_type_group || task.task_type || "—",
-      "City A": task.order_shipper_address?.city || "—",
-      "City B": task.order_consignee_address?.city || "—",
-      "Status": toBadge(pickStatusText(task) || task.task_type_group || "Task")
+  if (sections.has("stops")) {
+    stops.slice(0, 10).forEach((stop, index) => {
+      rows.push({
+        "Section": "Stop",
+        "Reference": stop.stop_no || stop.stop_seq || `Stop ${index + 1}`,
+        "Name": stop.stop_type_text || stop.stop_type || stop.type || "Stop",
+        "ORG": stop.city || stop.address?.city || "—",
+        "DST": stop.state || stop.address?.state || "—",
+        "Status": toBadge(stop.status_text || stop.stop_status_text || stop.stop_status || "Stop")
+      });
     });
-  });
+  }
 
-  history.slice(0, 8).forEach((item, index) => {
-    rows.push({
-      "Section": "History",
-      "Reference": item.status_text || item.status || item.action || `History ${index + 1}`,
-      "Name": item.operator || item.create_by || "—",
-      "City A": item.create_time || item.created_at || "—",
-      "City B": item.remark || item.message || "—",
-      "Status": toBadge(item.status_text || item.status || "History")
+  if (sections.has("tasks")) {
+    tasks.slice(0, 10).forEach((task) => {
+      rows.push({
+        "Section": "Task",
+        "Reference": task.task_no || "—",
+        "Name": task.task_type_group || task.task_type || "—",
+        "ORG": task.order_shipper_address?.city || "—",
+        "DST": task.order_consignee_address?.city || "—",
+        "Status": toBadge(task.status_text || task.task_status_text || task.task_status || task.task_type_group || "Task")
+      });
     });
-  });
+  }
 
-  renderTable("tripTableWrap", rows, ["Section", "Reference", "Name", "City A", "City B", "Status"]);
+  if (sections.has("history")) {
+    history.slice(0, 8).forEach((item, index) => {
+      rows.push({
+        "Section": "History",
+        "Reference": item.status_text || item.status || item.action || `History ${index + 1}`,
+        "Name": item.operator || item.create_by || "—",
+        "ORG": item.create_time || item.created_at || "—",
+        "DST": item.remark || item.message || "—",
+        "Status": toBadge(item.status_text || item.status || "History")
+      });
+    });
+  }
+
+  renderTable("tripTableWrap", rows, ["Section", "Reference", "Name", "ORG", "DST", "Status"], sections);
 }
 
 function renderLinehaulTable(rows) {
   const formatted = (rows || []).slice(0, 20).map((row, index) => ({
     "LH No": row.linehaul_no || row.lh_no || `LH ${index + 1}`,
     "Trip": row.trip_no || row.tripNo || "—",
-    "Origin": row.org_terminal || row.origin || "—",
-    "Destination": row.dst_terminal || row.destination || "—",
+    "ORG": row.org_terminal || row.origin || "—",
+    "DST": row.dst_terminal || row.destination || "—",
     "Status": toBadge(row.status_text || row.status || row.linehaul_status || "Loaded")
   }));
 
-  renderTable("linehaulTableWrap", formatted, ["LH No", "Trip", "Origin", "Destination", "Status"]);
+  renderTable("linehaulTableWrap", formatted, ["LH No", "Trip", "ORG", "DST", "Status"]);
 }
 
-function renderTable(targetId, rows, columns) {
+function renderTable(targetId, rows, columns, selectedSections = null) {
   const target = document.getElementById(targetId);
   if (!rows.length) {
+    const suffix = selectedSections && selectedSections.size
+      ? "The selected tabs are active, but those sections are not loaded yet. Click the load button to fetch them."
+      : "No data returned for the selected sections.";
     target.className = "table-wrap empty-state";
-    target.textContent = "No data returned for the selected sections.";
+    target.textContent = suffix;
     return;
   }
 
@@ -569,7 +644,7 @@ function toBadge(label) {
   const normalized = String(label || "").toLowerCase();
   let className = "blue";
   if (normalized.includes("transit")) className = "cyan";
-  else if (normalized.includes("deliver") || normalized.includes("success") || normalized.includes("complete")) className = "green";
+  else if (normalized.includes("deliver") || normalized.includes("success")) className = "green";
   else if (normalized.includes("pending") || normalized.includes("hold") || normalized.includes("open")) className = "gold";
   return `__BADGE__${JSON.stringify({ label, className })}`;
 }
@@ -595,7 +670,7 @@ function setMessage(node, text, isError = false) {
 }
 
 function titleize(str) {
-  return String(str || "").replace(/[_-]/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+  return String(str || "").replace(/[_-]/g, " ").replace(/\w/g, (m) => m.toUpperCase());
 }
 
 function escapeHtml(str) {
