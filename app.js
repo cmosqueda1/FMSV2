@@ -34,13 +34,13 @@ async function init() {
 }
 
 function bindEvents() {
-  document.getElementById("loginForm").addEventListener("submit", onLogin);
-  document.getElementById("resolveBtn").addEventListener("click", resolveKeyword);
-  document.getElementById("runOrderBtn").addEventListener("click", runOrderLoad);
-  document.getElementById("runTripBtn").addEventListener("click", runTripLoad);
-  document.getElementById("runLinehaulBtn").addEventListener("click", runLinehaulLoad);
-  document.getElementById("logoutBtn").addEventListener("click", logout);
-  document.getElementById("clearResultsBtn").addEventListener("click", clearResults);
+  document.getElementById("loginForm")?.addEventListener("submit", onLogin);
+  document.getElementById("resolveBtn")?.addEventListener("click", resolveKeyword);
+  document.getElementById("runOrderBtn")?.addEventListener("click", runOrderLoad);
+  document.getElementById("runTripBtn")?.addEventListener("click", runTripLoad);
+  document.getElementById("runLinehaulBtn")?.addEventListener("click", runLinehaulLoad);
+  document.getElementById("logoutBtn")?.addEventListener("click", logout);
+  document.getElementById("clearResultsBtn")?.addEventListener("click", clearResults);
 
   document.querySelectorAll("[data-view]").forEach((el) => {
     el.addEventListener("click", () => setView(el.dataset.view));
@@ -73,9 +73,7 @@ function bindEvents() {
       setView("orders");
       const section = btn.dataset.orderChip;
       const target = document.querySelector(`#orderChips .chip[data-section="${section}"]`);
-      if (target && !target.classList.contains("active")) {
-        target.click();
-      }
+      if (target && !target.classList.contains("active")) target.click();
       target?.scrollIntoView({ block: "nearest", inline: "center" });
     });
   });
@@ -93,7 +91,7 @@ async function hydrateSession() {
     } else {
       showLogin();
     }
-  } catch (err) {
+  } catch {
     showLogin();
   }
 }
@@ -143,12 +141,30 @@ async function onLogin(event) {
 }
 
 async function logout() {
+  const logoutBtn = document.getElementById("logoutBtn");
+  if (logoutBtn) {
+    logoutBtn.disabled = true;
+    logoutBtn.textContent = "Logging Out...";
+  }
+
   try {
-    await fetch("/api/logout", { method: "POST", credentials: "include" });
+    const res = await fetch("/api/logout", { method: "POST", credentials: "include" });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || json?.ok === false) {
+      throw new Error(json?.error || "Logout failed");
+    }
+  } catch (err) {
+    console.error(err);
   } finally {
     state.session = null;
     state.context = { type: null, orderNo: "", tripNo: "", lhNo: "" };
+    state.latestResults = {};
+    clearResults();
     showLogin();
+    if (logoutBtn) {
+      logoutBtn.disabled = false;
+      logoutBtn.textContent = "Log Out";
+    }
   }
 }
 
@@ -305,6 +321,29 @@ async function runLinehaulLoad() {
   }
 }
 
+function pickStatusText(obj) {
+  if (!obj || typeof obj !== "object") return "—";
+  return (
+    obj.status_text ||
+    obj.trip_status_text ||
+    obj.assign_status_text ||
+    obj.stop_status_text ||
+    obj.task_status_text ||
+    obj.linehaul_status_text ||
+    obj.optimize_status_text ||
+    obj.cost_status_text ||
+    obj.status ||
+    obj.trip_status ||
+    obj.assign_status ||
+    obj.stop_status ||
+    obj.task_status ||
+    obj.linehaul_status ||
+    obj.optimize_status ||
+    obj.cost_status ||
+    "—"
+  );
+}
+
 function renderOrderSummary(data, orderNo, sections) {
   const summary = [];
   const detail = data.detail || {};
@@ -314,11 +353,11 @@ function renderOrderSummary(data, orderNo, sections) {
 
   summary.push(["Order No", detail.order_no || headinfo.order_no || orderNo]);
   summary.push(["PRO No", detail.pro_no || headinfo.pro_no || "—"]);
-  summary.push(["Status", detail.status_text || headinfo.status || "—"]);
+  summary.push(["Status", detail.status_text || headinfo.status_text || headinfo.status || "—"]);
   summary.push(["Assign Status", detail.assign_status_text || headinfo.assign_status_text || "—"]);
   summary.push(["Origin", detail.org_terminal || shipper.location_name || "—"]);
   summary.push(["Destination", detail.dst_terminal || consignee.location_name || "—"]);
-  summary.push(["Carrier", detail.carrier || headinfo.carrier || "—"]);
+  summary.push(["Carrier", detail.carrier_name || detail.carrier || headinfo.carrier_name || headinfo.carrier || "—"]);
   summary.push(["Pickup Date", detail.pickup_date || headinfo.pickup_date || "—"]);
   summary.push(["Delivery Date", detail.delivery_date || headinfo.delivery_date || "—"]);
   summary.push(["Sections", sections.join(", ")]);
@@ -333,11 +372,11 @@ function renderTripSummary(data, tripNo, sections) {
 
   const summary = [
     ["Trip No", detail.trip_no || tripNo],
-    ["Status", detail.trip_status || detail.status || "—"],
+    ["Status", pickStatusText(detail)],
     ["Dispatch Date", detail.dispatch_date || detail.trip_date || "—"],
     ["Origin", detail.org_terminal || detail.origin_terminal || "—"],
     ["Destination", detail.dst_terminal || detail.destination_terminal || "—"],
-    ["Carrier", detail.carrier || "—"],
+    ["Carrier", detail.carrier_name || detail.carrier || "—"],
     ["Task Count", tasks.length || "—"],
     ["Stop Count", stops.length || "—"],
     ["Sections", sections.join(", ")]
@@ -352,7 +391,7 @@ function renderLinehaulSummary(rows, linehaulNos) {
     ["Requested LH", linehaulNos.join(", ") || "—"],
     ["Rows Returned", String(rows.length)],
     ["Linehaul No", first.linehaul_no || first.lh_no || "—"],
-    ["Status", first.status || first.linehaul_status || "—"],
+    ["Status", pickStatusText(first)],
     ["Origin", first.org_terminal || first.origin || "—"],
     ["Destination", first.dst_terminal || first.destination || "—"]
   ];
@@ -398,7 +437,7 @@ function renderOrderTable(data) {
       "Name": detail.pro_no || "—",
       "City A": detail.org_terminal || "—",
       "City B": detail.dst_terminal || "—",
-      "Status": toBadge(detail.status_text || "Loaded")
+      "Status": toBadge(detail.status_text || detail.status || "Loaded")
     });
   }
 
@@ -409,7 +448,7 @@ function renderOrderTable(data) {
       "Name": task.task_type_group || task.task_type || "—",
       "City A": task.order_shipper_address?.city || "—",
       "City B": task.order_consignee_address?.city || "—",
-      "Status": toBadge(task.task_type_group || "Task")
+      "Status": toBadge(task.status_text || task.task_status_text || task.task_status || task.task_type_group || "Task")
     });
   });
 
@@ -427,11 +466,11 @@ function renderOrderTable(data) {
   history.slice(0, 6).forEach((item, index) => {
     rows.push({
       "Section": "History",
-      "Reference": item.status || item.action || `History ${index + 1}`,
+      "Reference": item.status_text || item.status || item.action || `History ${index + 1}`,
       "Name": item.operator || item.create_by || "—",
       "City A": item.create_time || item.created_at || "—",
       "City B": item.remark || item.message || "—",
-      "Status": toBadge("History")
+      "Status": toBadge(item.status_text || item.status || "History")
     });
   });
 
@@ -449,10 +488,10 @@ function renderTripTable(data) {
     rows.push({
       "Section": "Detail",
       "Reference": detail.trip_no || "—",
-      "Name": detail.trip_status || detail.status || "—",
+      "Name": pickStatusText(detail),
       "City A": detail.org_terminal || detail.origin_terminal || "—",
       "City B": detail.dst_terminal || detail.destination_terminal || "—",
-      "Status": toBadge(detail.trip_status || detail.status || "Loaded")
+      "Status": toBadge(pickStatusText(detail))
     });
   }
 
@@ -460,10 +499,10 @@ function renderTripTable(data) {
     rows.push({
       "Section": "Stop",
       "Reference": stop.stop_no || stop.stop_seq || `Stop ${index + 1}`,
-      "Name": stop.stop_type || stop.type || "Stop",
+      "Name": stop.stop_type_text || stop.stop_type || stop.type || "Stop",
       "City A": stop.city || stop.address?.city || "—",
       "City B": stop.state || stop.address?.state || "—",
-      "Status": toBadge(stop.stop_status || "Stop")
+      "Status": toBadge(pickStatusText(stop))
     });
   });
 
@@ -474,18 +513,18 @@ function renderTripTable(data) {
       "Name": task.task_type_group || task.task_type || "—",
       "City A": task.order_shipper_address?.city || "—",
       "City B": task.order_consignee_address?.city || "—",
-      "Status": toBadge(task.task_status || task.task_type_group || "Task")
+      "Status": toBadge(pickStatusText(task) || task.task_type_group || "Task")
     });
   });
 
   history.slice(0, 8).forEach((item, index) => {
     rows.push({
       "Section": "History",
-      "Reference": item.status || item.action || `History ${index + 1}`,
+      "Reference": item.status_text || item.status || item.action || `History ${index + 1}`,
       "Name": item.operator || item.create_by || "—",
       "City A": item.create_time || item.created_at || "—",
       "City B": item.remark || item.message || "—",
-      "Status": toBadge("History")
+      "Status": toBadge(item.status_text || item.status || "History")
     });
   });
 
@@ -530,8 +569,8 @@ function toBadge(label) {
   const normalized = String(label || "").toLowerCase();
   let className = "blue";
   if (normalized.includes("transit")) className = "cyan";
-  else if (normalized.includes("deliver") || normalized.includes("success")) className = "green";
-  else if (normalized.includes("pending") || normalized.includes("hold")) className = "gold";
+  else if (normalized.includes("deliver") || normalized.includes("success") || normalized.includes("complete")) className = "green";
+  else if (normalized.includes("pending") || normalized.includes("hold") || normalized.includes("open")) className = "gold";
   return `__BADGE__${JSON.stringify({ label, className })}`;
 }
 
