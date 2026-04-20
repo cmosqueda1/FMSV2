@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FMS Dispatch Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div class="app-bg"></div>
+
+  <section id="loginScreen" class="login-shell hidden">
+    <div class="login-panel">
+      <div class="login-brand">Your Logo</div>
+      <div class="login-copy">
+        <div class="eyebrow">New Page / Design</div>
+        <h1>Dispatch Portal</h1>
+        <p>
+          Sign in with your FMS credentials to load your dispatch workspace,
+          save your session, and unlock Order, Trip, Search, and Linehaul data.
+        </p>
+      </div>
+
+      <form id="loginForm" class="login-form">
+        <label>
+          <span>Account</span>
+          <input id="accountInput" name="account" type="text" placeholder="Enter FMS account" required />
+        </label>
+        <label>
+          <span>Password</span>
+          <input id="passwordInput" name="password" type="password" placeholder="Enter password" required />
+        </label>
+        <button type="submit" class="primary-btn full">Log In</button>
+        <div id="loginMessage" class="form-message"></div>
+      </form>
+
+      <div class="login-ring ring-one"></div>
+      <div class="login-ring ring-two"></div>
+    </div>
+  </section>
+
+  <section id="appShell" class="app-shell hidden">
+    <aside class="sidebar">
+      <div>
+        <div class="logo-wrap">Your Logo</div>
+
+        <nav class="sidebar-nav">
+          <button class="nav-item active" data-view="home">Home</button>
+          <button class="nav-item" data-view="orders">Orders</button>
+          <div class="nav-submenu nav-submenu-orders">
+            <button class="sub-item" data-order-chip="billing">Billing</button>
+            <button class="sub-item" data-order-chip="consignee">Consignee</button>
+            <button class="sub-item" data-order-chip="detail">Detail</button>
+            <button class="sub-item" data-order-chip="files">Files</button>
+            <button class="sub-item" data-order-chip="estimate">Estimate</button>
+            <button class="sub-item" data-order-chip="basic">Basic</button>
+            <button class="sub-item" data-order-chip="history">History</button>
+            <button class="sub-item" data-order-chip="tasks">Tasks</button>
+            <button class="sub-item" data-order-chip="shipper">Shipper</button>
+            <button class="sub-item" data-order-chip="headinfo">Head Info</button>
+            <button class="sub-item" data-order-chip="actualfreight">Actual Freight</button>
+          </div>
+          <button class="nav-item" data-view="trips">Trips</button>
+          <button class="nav-item" data-view="linehaul">Linehaul</button>
+          <button class="nav-item" data-view="results">Results</button>
+        </nav>
+      </div>
+
+      <div class="sidebar-foot">
+        <button id="logoutBtn" class="ghost-btn">Log Out</button>
+      </div>
+    </aside>
+
+    <main class="main-shell">
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="mini-tabs">
+            <button class="mini-tab active" data-view="home">Home</button>
+            <button class="mini-tab" data-view="orders">Orders</button>
+            <button class="mini-tab" data-view="trips">Trips</button>
+            <button class="mini-tab" data-view="linehaul">Linehaul</button>
+            <button class="mini-tab" data-view="results">Results</button>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <div class="user-chip">
+            <span id="sessionLabel">Admin User</span>
+          </div>
+          <div class="avatar-dot">U</div>
+        </div>
+      </header>
+
+      <div class="content-shell">
+        <section id="homeView" class="view active">
+          <div class="page-header">
+            <div>
+              <div class="page-kicker">Dispatch Workspace</div>
+              <h2>Home</h2>
+            </div>
+          </div>
+
+          <div class="hero-card">
+            <div class="hero-copy">
+              <p class="eyebrow">Search for Pro#/Tracking#、DO#、Trip#、LH# Only</p>
+              <h1>Modern FMS Dispatch Portal</h1>
+              <p>
+                Resolve a keyword once, then move directly into the matching Order,
+                Trip, or Linehaul workspace with the proper data sections available.
+              </p>
+            </div>
+            <div class="hero-actions">
+              <div class="search-row">
+                <input id="globalKeyword" type="text" placeholder="Search for Pro#, DO#, Trip#, or LH#" />
+                <button id="resolveBtn" class="primary-btn">Resolve</button>
+              </div>
+              <div class="quick-actions">
+                <button class="filter-pill" data-jump="orders">Order View</button>
+                <button class="filter-pill" data-jump="trips">Trip View</button>
+                <button class="filter-pill" data-jump="linehaul">Linehaul View</button>
+                <button class="filter-pill" data-jump="results">Results</button>
+              </div>
+              <div id="resolveMessage" class="form-message compact"></div>
+            </div>
+            <div class="hero-ring ring-a"></div>
+            <div class="hero-ring ring-b"></div>
+          </div>
+
+          <div class="stats-grid">
+            <article class="stat-card">
+              <span>Resolved Type</span>
+              <strong id="homeResolvedType">—</strong>
+            </article>
+            <article class="stat-card">
+              <span>Current Order</span>
+              <strong id="homeOrderNo">—</strong>
+            </article>
+            <article class="stat-card">
+              <span>Current Trip</span>
+              <strong id="homeTripNo">—</strong>
+            </article>
+            <article class="stat-card">
+              <span>Current LH</span>
+              <strong id="homeLhNo">—</strong>
+            </article>
+          </div>
+        </section>
+
+        <section id="ordersView" class="view">
+          <div class="page-header">
+            <div>
+              <div class="page-kicker">Order Group</div>
+              <h2>Orders</h2>
+            </div>
+            <div class="action-row">
+              <button id="runOrderBtn" class="primary-btn">Load Order Data</button>
+            </div>
+          </div>
+
+          <div class="toolbar-card">
+            <div class="search-row">
+              <input id="orderInput" type="text" placeholder="Search orders..." />
+              <select id="orderSort">
+                <option value="recent">Sort By Recent</option>
+                <option value="alpha">Sort A-Z</option>
+              </select>
+            </div>
+
+            <div class="chip-grid" id="orderChips">
+              <button class="chip active" data-section="billing">Billing</button>
+              <button class="chip" data-section="consignee">Consignee</button>
+              <button class="chip active" data-section="detail">Detail</button>
+              <button class="chip active" data-section="files">Files</button>
+              <button class="chip" data-section="estimate">Estimate</button>
+              <button class="chip" data-section="basic">Basic</button>
+              <button class="chip" data-section="history">History</button>
+              <button class="chip" data-section="tasks">Tasks</button>
+              <button class="chip" data-section="shipper">Shipper</button>
+              <button class="chip" data-section="headinfo">Head Info</button>
+              <button class="chip" data-section="actualfreight">Actual Freight</button>
+            </div>
+          </div>
+
+          <div class="panel-grid">
+            <article class="data-card">
+              <div class="card-head">
+                <h3>Order Summary</h3>
+                <span id="orderSummaryLabel">Waiting for order search</span>
+              </div>
+              <div id="orderSummary" class="summary-list"></div>
+            </article>
+
+            <article class="data-card">
+              <div class="card-head">
+                <h3>Loaded Sections</h3>
+                <span id="orderSectionsCount">0</span>
+              </div>
+              <div id="orderSectionCards" class="tile-list"></div>
+            </article>
+          </div>
+
+          <article class="table-card">
+            <div class="card-head">
+              <h3>Order Data Preview</h3>
+              <span id="orderTableLabel">No data loaded</span>
+            </div>
+            <div id="orderTableWrap" class="table-wrap empty-state">Run an order search to load data.</div>
+          </article>
+        </section>
+
+        <section id="tripsView" class="view">
+          <div class="page-header">
+            <div>
+              <div class="page-kicker">Trip Group</div>
+              <h2>Trips</h2>
+            </div>
+            <div class="action-row">
+              <button id="runTripBtn" class="primary-btn">Load Trip Data</button>
+            </div>
+          </div>
+
+          <div class="toolbar-card">
+            <div class="search-row">
+              <input id="tripInput" type="text" placeholder="Search trips..." />
+              <select id="tripSort">
+                <option value="recent">Sort By Recent</option>
+                <option value="alpha">Sort A-Z</option>
+              </select>
+            </div>
+
+            <div class="chip-grid" id="tripChips">
+              <button class="chip active" data-section="detail">Detail</button>
+              <button class="chip active" data-section="files">Files</button>
+              <button class="chip" data-section="history">History</button>
+              <button class="chip" data-section="stops">Stops</button>
+              <button class="chip" data-section="tasks">Tasks</button>
+            </div>
+          </div>
+
+          <div class="panel-grid">
+            <article class="data-card">
+              <div class="card-head">
+                <h3>Trip Summary</h3>
+                <span id="tripSummaryLabel">Waiting for trip search</span>
+              </div>
+              <div id="tripSummary" class="summary-list"></div>
+            </article>
+
+            <article class="data-card">
+              <div class="card-head">
+                <h3>Loaded Sections</h3>
+                <span id="tripSectionsCount">0</span>
+              </div>
+              <div id="tripSectionCards" class="tile-list"></div>
+            </article>
+          </div>
+
+          <article class="table-card">
+            <div class="card-head">
+              <h3>Trip Data Preview</h3>
+              <span id="tripTableLabel">No data loaded</span>
+            </div>
+            <div id="tripTableWrap" class="table-wrap empty-state">Run a trip search to load data.</div>
+          </article>
+        </section>
+
+        <section id="linehaulView" class="view">
+          <div class="page-header">
+            <div>
+              <div class="page-kicker">Linehaul Group</div>
+              <h2>Linehaul</h2>
+            </div>
+            <div class="action-row">
+              <button id="runLinehaulBtn" class="primary-btn">Load Linehaul</button>
+            </div>
+          </div>
+
+          <div class="toolbar-card">
+            <div class="search-row">
+              <input id="linehaulInput" type="text" placeholder="Enter LH number or comma-separated LH list" />
+              <select id="linehaulMode">
+                <option value="single">Single</option>
+                <option value="multiple">Multiple</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="panel-grid single">
+            <article class="data-card">
+              <div class="card-head">
+                <h3>Linehaul Summary</h3>
+                <span id="linehaulSummaryLabel">Waiting for linehaul search</span>
+              </div>
+              <div id="linehaulSummary" class="summary-list"></div>
+            </article>
+          </div>
+
+          <article class="table-card">
+            <div class="card-head">
+              <h3>Linehaul Data Preview</h3>
+              <span id="linehaulTableLabel">No data loaded</span>
+            </div>
+            <div id="linehaulTableWrap" class="table-wrap empty-state">Run a linehaul search to load data.</div>
+          </article>
+        </section>
+
+        <section id="resultsView" class="view">
+          <div class="page-header">
+            <div>
+              <div class="page-kicker">Result Group</div>
+              <h2>Results</h2>
+            </div>
+          </div>
+
+          <article class="table-card results-card">
+            <div class="card-head">
+              <h3>Latest Response</h3>
+              <button id="clearResultsBtn" class="ghost-btn small">Clear</button>
+            </div>
+            <pre id="resultsCode" class="code-block">{}</pre>
+          </article>
+        </section>
+      </div>
+    </main>
+  </section>
+
+  <script src="./app.js"></script>
+</body>
+</html>
