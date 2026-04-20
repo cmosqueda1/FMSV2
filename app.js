@@ -498,7 +498,7 @@ function renderLinehaulTable(rows) {
     "Trip": row.trip_no || row.tripNo || "—",
     "Origin": row.org_terminal || row.origin || "—",
     "Destination": row.dst_terminal || row.destination || "—",
-    "Status": toBadge(row.status || row.linehaul_status || "Loaded")
+    "Status": toBadge(row.status_text || row.status || row.linehaul_status || "Loaded")
   }));
 
   renderTable("linehaulTableWrap", formatted, ["LH No", "Trip", "Origin", "Destination", "Status"]);
